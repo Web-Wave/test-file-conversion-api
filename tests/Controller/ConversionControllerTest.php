@@ -58,6 +58,27 @@ class ConversionControllerTest extends WebTestCase
         $this->assertSame('Output format must be one of: json, xml.', $this->getJson()['error']);
     }
 
+    public function testShowsConversionStatus(): void
+    {
+        $this->submit($this->createFile('data.csv'), 'xml');
+        $id = $this->getJson()['id'];
+
+        $this->client->request('GET', '/api/conversions/'.$id);
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSame(['id' => $id, 'status' => 'pending', 'error' => null], $this->getJson());
+    }
+
+    public function testReturns404ForUnknownConversion(): void
+    {
+        $this->client->request('GET', '/api/conversions/0199f2a4-6b1e-7c3d-9f00-000000000000');
+        $this->assertResponseStatusCodeSame(404);
+        $this->assertSame('Conversion not found.', $this->getJson()['error']);
+
+        $this->client->request('GET', '/api/conversions/not-a-uuid');
+        $this->assertResponseStatusCodeSame(404);
+    }
+
     private function submit(UploadedFile $file, string $outputFormat): void
     {
         $this->client->request('POST', '/api/conversions', ['output_format' => $outputFormat], ['file' => $file]);

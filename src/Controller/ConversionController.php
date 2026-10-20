@@ -52,4 +52,28 @@ class ConversionController extends AbstractController
 
         return $this->json(['id' => $job->getId(), 'status' => $job->getStatus()], 202);
     }
+
+    #[Route('/{id}', methods: ['GET'])]
+    public function status(string $id): JsonResponse
+    {
+        $job = $this->findJob($id);
+        if (null === $job) {
+            return $this->json(['error' => 'Conversion not found.'], 404);
+        }
+
+        return $this->json([
+            'id' => $job->getId(),
+            'status' => $job->getStatus(),
+            'error' => $job->getError(),
+        ]);
+    }
+
+    private function findJob(string $id): ?ConversionJob
+    {
+        if (!Uuid::isValid($id)) {
+            return null;
+        }
+
+        return $this->entityManager->find(ConversionJob::class, $id);
+    }
 }
