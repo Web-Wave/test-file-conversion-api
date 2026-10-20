@@ -79,6 +79,36 @@ class ConversionControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(404);
     }
 
+    public function testDownloadsConvertedFile(): void
+    {
+        $outputPath = tempnam(sys_get_temp_dir(), 'output');
+        file_put_contents($outputPath, '{"converted": true}');
+
+        $job = new ConversionJob('csv', 'json', 'data.csv', '/unused/input.csv');
+        $job->start();
+        $job->complete($outputPath);
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $entityManager->persist($job);
+        $entityManager->flush();
+
+        $this->client->request('GET', '/api/conversions/'.$job->getId().'/download');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertResponseHeaderSame('Content-Type', 'application/json');
+        $this->assertResponseHeaderSame('Content-Disposition', 'attachment; filename=data.json');
+        $this->assertSame('{"converted": true}', $this->client->getInternalResponse()->getContent());
+    }
+
+    public function testRefusesDownloadBeforeCompletion(): void
+    {
+        $this->submit($this->createFile('data.csv'), 'json');
+
+        $this->client->request('GET', '/api/conversions/'.$this->getJson()['id'].'/download');
+
+        $this->assertResponseStatusCodeSame(409);
+        $this->assertSame('Conversion is not completed (status: pending).', $this->getJson()['error']);
+    }
+
     private function submit(UploadedFile $file, string $outputFormat): void
     {
         $this->client->request('POST', '/api/conversions', ['output_format' => $outputFormat], ['file' => $file]);

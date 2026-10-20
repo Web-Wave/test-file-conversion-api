@@ -3,12 +3,14 @@
 namespace App\Controller;
 
 use App\Entity\ConversionJob;
+use App\Enum\ConversionStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
@@ -66,6 +68,25 @@ class ConversionController extends AbstractController
             'status' => $job->getStatus(),
             'error' => $job->getError(),
         ]);
+    }
+
+    #[Route('/{id}/download', methods: ['GET'])]
+    public function download(string $id): Response
+    {
+        $job = $this->findJob($id);
+        if (null === $job) {
+            return $this->json(['error' => 'Conversion not found.'], 404);
+        }
+
+        if (ConversionStatus::Completed !== $job->getStatus()) {
+            return $this->json(['error' => sprintf('Conversion is not completed (status: %s).', $job->getStatus()->value)], 409);
+        }
+
+        $fileName = pathinfo($job->getOriginalName(), PATHINFO_FILENAME).'.'.$job->getOutputFormat();
+        $response = $this->file($job->getOutputPath(), $fileName);
+        $response->headers->set('Content-Type', 'json' === $job->getOutputFormat() ? 'application/json' : 'application/xml');
+
+        return $response;
     }
 
     private function findJob(string $id): ?ConversionJob
