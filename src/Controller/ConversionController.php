@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\ConversionJob;
 use App\Enum\ConversionStatus;
+use App\Message\ConvertFile;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -11,6 +12,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,6 +24,7 @@ class ConversionController extends AbstractController
 
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private MessageBusInterface $bus,
         #[Autowire(param: 'app.storage_dir')]
         private string $storageDir,
     ) {
@@ -51,6 +54,9 @@ class ConversionController extends AbstractController
         $job = new ConversionJob($inputFormat, $outputFormat, $file->getClientOriginalName(), $inputFile->getPathname());
         $this->entityManager->persist($job);
         $this->entityManager->flush();
+
+        // Dispatched after the flush so the worker always finds the job.
+        $this->bus->dispatch(new ConvertFile((string) $job->getId()));
 
         return $this->json(['id' => $job->getId(), 'status' => $job->getStatus()], 202);
     }
