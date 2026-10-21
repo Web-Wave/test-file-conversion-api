@@ -70,3 +70,10 @@ curl -OJ http://127.0.0.1:8000/api/conversions/0199.../download
 - **Unknown file size**: the upload is moved to disk and the download is streamed, the file is never loaded in memory.
 - **Failures**: the job is marked as `failed` with the error message and is not retried. The client sees it in the status.
 - **Tests**: the workflow test uses the same Doctrine transport as in production and runs the real worker command.
+
+## What I would do next
+
+- Plug real converters behind `FileConverterInterface` (PhpSpreadsheet for XLSX and ODS).
+- Clean up old input and output files with a scheduled command.
+- Add authentication, so a client only sees its own jobs.
+- Offer a webhook as an alternative to polling.
