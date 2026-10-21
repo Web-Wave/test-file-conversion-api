@@ -18,7 +18,7 @@ class DummyFileConverter implements FileConverterInterface
     public function convert(string $inputPath, string $outputPath, string $outputFormat): void
     {
         if (!is_file($inputPath)) {
-            throw new \RuntimeException(sprintf('Input file "%s" not found.', $inputPath));
+            throw new \RuntimeException('Input file not found.');
         }
 
         sleep($this->duration);
